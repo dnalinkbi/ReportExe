@@ -1,0 +1,44 @@
+{
+    "data": [
+        {
+            "__MetaData__": null,
+            "Platform": "",
+            "Service Type": "",
+            "Library Type": "",
+            "Insert Size": "",
+            "Format": [
+                {
+                    "End" : [],
+                    "Read" : []
+                }
+            ],
+            "Software": [
+                {
+                    "Software Type": "Basecalling",
+                    "Software Name": "bcl2fastq",
+                    "Software Version": 2.20
+                }
+            ]
+        },
+        {   
+            "__SampleData__": null,
+            "Platform": "Illumina Novaseq 6000",
+            "Service Type": "WGS",
+            "Library Type": "TruSeq DNA PCR-Free 350bp",
+            "Insert Size": "Apx. 350bp",
+            "Format": [
+                {
+                    "End" : ["PE", "SE"],
+                    "Read" : [101, 151, 301]
+                }
+            ],
+            "Software": [
+                {
+                    "Software Type": "Basecalling",
+                    "Software Name": "bcl2fastq",
+                    "Software Version": 2.20
+                }
+            ]
+        }        
+    ]
+}
