@@ -1,5 +1,7 @@
 # ReportExe
 
+
+
 ## 사용법
 
 1. 로컬 실행
@@ -8,7 +10,7 @@
     import docx
     import tkinter
     ``` 
-    로컬에 세팅 필수
+로컬에 세팅 필수
     ```bash
     $ pthon main.py
     ```
