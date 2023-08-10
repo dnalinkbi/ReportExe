@@ -1,4 +1,3 @@
-
 from docx import Document
 from docx.shared import Inches
 from docx.shared import Mm
@@ -429,8 +428,8 @@ read_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 new_section = document.add_section(1)
 
 with open("./%s_Link" %ServiceID, mode='r') as f:
-	 Read = f.read()
-	 Link_ls = Read.split()
+	Read = f.read()
+	Link_ls = Read.split()
 
 DownloadLink_PAGE = document.add_paragraph()
 DownloadLink = DownloadLink_PAGE.add_run('\t\tDownload Link\n')

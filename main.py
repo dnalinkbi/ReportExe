@@ -1,7 +1,8 @@
-from tools.DocxTools import Make_UI_Docx
+from tools.DocxTools import ReportDocxApp
 
 def main():
-    Make_UI_Docx()
+    app = ReportDocxApp()
+    app.run()
     
 if __name__ == '__main__':
     main()

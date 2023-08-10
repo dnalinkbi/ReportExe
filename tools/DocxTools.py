@@ -1,9 +1,11 @@
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkcalendar import Calendar
 from datetime import date
 import locale
+from ReportEdit import ReportExporter
+import os
 
 class ReportDocxApp:
     def __init__(self):
@@ -19,6 +21,10 @@ class ReportDocxApp:
         self.root = tk.Tk()
         self.root.title("Illumina Docx Report Maker")
         
+        # 변수 지정
+        self.SampleNamer_Window = None
+        self.SampleID_List = []
+
         # Setting
         self.root.geometry("400x500+600+200")
         self.root.configure(bg='white')
@@ -46,10 +52,10 @@ class ReportDocxApp:
         self.Input_Fields["ServceID"] = self.Entry_ServieID
         
         self.Label_client = tk.Label(self.root, text="Client Name", bg="white")
-        self.Entry_client = tk.Entry(self.root, state=tk.DISABLED)
+        self.Entry_client = tk.Entry(self.root)
         
         self.Label_ClientCompany = tk.Label(self.root, text="Client Company", bg="white")
-        self.Entry_ClientCompany = tk.Entry(self.root, state=tk.DISABLED)
+        self.Entry_ClientCompany = tk.Entry(self.root)
         
         ## Library Info
         # Platform of ComboBox widgets
@@ -86,9 +92,15 @@ class ReportDocxApp:
         
         ## Sample Info
         # Count
+        self.Entry_SampleCount =tk.IntVar()
         self.Label_SampleCount = tk.Label(self.root, text="Sample Count", bg="white")
         self.Entry_SampleCount = tk.Entry(self.root)
+        self.Entry_SampleCount.insert(0, 5) # 임시
 
+        # Sample Name 입력기
+        self.SampleList = []
+        self.Button_SampleName = tk.Button(self.root, text="Sample 입력", command=self.OpenSampleName)
+        
         ## Minimum Sample Read or Base Pair
         self.TargetNumber_var = tk.StringVar()
         self.BaseVersion_var = tk.StringVar()
@@ -152,6 +164,7 @@ class ReportDocxApp:
         
         self.Label_SampleCount.grid(row=8, column=0, sticky=tk.E)
         self.Entry_SampleCount.grid(row=8, padx=horizontal_spacing, pady=vertical_spacing, column=1)
+        self.Button_SampleName.grid(row=8, column=2)
 
         self.Label_TargetNumver.grid(row=9, column=0, sticky=tk.E)
         self.Entry_TargetNumber.grid(row=9, column=1, padx=horizontal_spacing, pady=vertical_spacing)
@@ -169,30 +182,28 @@ class ReportDocxApp:
 
 
         # Create the button
-        self.button = tk.Button(self.root, text="검수용 보고서 작성", command=None, sticky=None)
+        self.button = tk.Button(self.root, text="검수용 보고서 작성", command=self.create_report, sticky=None)
         self.button.grid(row=15, columnspan=2)
         
         self.create_Input_button()
         self.create_clear_button()
-        
-    
-    
-    ## 필드 추가 기능 function
-    def create_Input_button(self):
-        InsertApp_button = tk.Button(self.root, text="적용", command=self.insert_input_serviceID)
-        InsertApp_button.grid(row=0,column=2, sticky=tk.E, padx=6)    
-        
-        
-    def create_clear_button(self):
-        clear_button = tk.Button(self.root, text="초기화", command=self.clear_input_fields)
-        clear_button.grid(row=0,column=2, sticky=tk.W)
         
 
     ## 작동 기능 function        
     def on_closing(self):
         if messagebox.askokcancel("종료", "정말로 종료하시겠습니까?"):
             self.root.destroy()
-    
+            
+            
+    ## 필드 추가 기능 function
+    def create_Input_button(self):
+        InsertApp_button = tk.Button(self.root, text="적용", command=self.insert_input_serviceID)
+        InsertApp_button.grid(row=0,column=2, sticky=tk.E, padx=6)    
+        
+    def create_clear_button(self):
+        clear_button = tk.Button(self.root, text="초기화", command=self.clear_input_fields)
+        clear_button.grid(row=0,column=2, sticky=tk.W)
+            
     def insert_input_serviceID(self):
         None
     
@@ -200,7 +211,71 @@ class ReportDocxApp:
         self.Input_Fields["ServceID"].config(state=tk.NORMAL)
         self.Input_Fields["ServceID"].delete(0, tk.END)
 
+    #### Sample 입력키 창 띄우기
+    def OpenSampleName(self):
+        if self.SampleNamer_Window:
+            self.SampleNamer_Window.destroy()
+        self.SampleNamer()
+    
+    def SampleNamer(self):
+        if self.Entry_SampleCount.get() == "":
+            messagebox.showwarning("빈 샘플 수", "샘플 수를 입력하세요")
+            return None
+            
+        self.SampleNamer_Window = tk.Toplevel(self.root)
+        self.SampleNamer_Window.title("샘플명 입력")
+    
+        # Setting
+        self.SampleNamer_Window.geometry("+{}+{}".format(self.root.winfo_x() + self.root.winfo_width(), self.root.winfo_y()))
+        
+        self.num_fields_entry = None
+        self.create_fields_button = None
+        self.clear_fields_button = None
+        self.entries = []
 
+        label_Namer1 = tk.Label(self.SampleNamer_Window, text="샘플 이름을 입력하세요.\n기본값 Sample_$")
+        label_Namer1.pack()
+
+        num_fields = int(self.Entry_SampleCount.get())
+
+        # Create new input fields
+        for _ in range(num_fields):
+            entry = tk.Entry(self.SampleNamer_Window, width=20)
+            entry.pack()
+            self.entries.append(entry)
+            entry.bind("<Return>", lambda event, index=_: self.move_to_next_entry(event, index))
+            
+            if _ == 0:
+                self.current_entry = entry
+            
+        self.SampleNamer_Window.bind("<Control-v>", self.handle_paste)
+        
+        self.Button_SampleSet = tk.Button(self.SampleNamer_Window, text="샘플명 확정", command=self.SampleListGet)
+        self.Button_SampleSet.pack()
+    
+    
+    def SampleListGet(self):
+        self.SampleID_List = [entry.get() for entry in self.entries]
+        self.SampleNamer_Window.destroy()
+        
+    def move_to_next_entry(self, event, index):
+        if index < len(self.entries) - 1:
+            self.current_entry = self.entries[index + 1]
+            self.current_entry.focus_set()
+
+    
+    # 엑셀에서 복사해서 붙혀넣기 기능
+    def handle_paste(self, event):
+        content = self.root.clipboard_get()
+
+        lines = content.split("\n")  # Split content by newline
+
+        for i, line in enumerate(lines):
+            if i < len(self.entries):
+                self.entries[i].delete(0, tk.END)  # Clear existing entry
+                self.entries[i].insert(0, line)  # Paste content into entry
+
+    #### 라이브러리 DB
     def Load_Library_Kit(self):
         ngs_library_kits = [
                                 "TruSeq DNA PCR-Free Library Prep Kit",
@@ -221,6 +296,7 @@ class ReportDocxApp:
                             ]
         return ngs_library_kits
     
+    
     #### 체크 변경시 변경
     def Activate_DateEntry(self):
         
@@ -229,6 +305,7 @@ class ReportDocxApp:
         else:
             self.Entry_ReportDate.config(state=tk.DISABLED)
             self.Entry_ReportDate.configure(disabledforeground="black")
+
 
     #### 생상랸 1000단위 표기기
     def Convert_Numver(self, *args):
@@ -244,7 +321,6 @@ class ReportDocxApp:
             
         self.Entry_TargetNumber.delete(0, tk.END)
         Output_Number = locale.format_string("%d", data, grouping=True)
-        print(Output_Number)
         self.Entry_TargetNumber.insert(0, Output_Number)
 
             
@@ -285,7 +361,7 @@ class ReportDocxApp:
             self.CheckBox_DateVar2.set(0)
             self.Activate_DateEntry()           
     
-     #### 날짜 선택 Calender APP
+    #### 날짜 선택 Calender APP
     def pick_date(self):
         # Create a new Tkinter window for the date picker
         self.Picker_Window = tk.Toplevel(self.root)
@@ -305,6 +381,46 @@ class ReportDocxApp:
         self.DateVar.set(selected_date)
         self.root.focus_set()
         self.Picker_Window.destroy()    
+    
+    ######
+    ## Word Document Creating Functions
+    def create_report(self):
+        print("Creating Word Document")
+        
+        ## File path to the Word Document
+        PWD = os.getcwd()
+        ReportFilePath = filedialog.askopenfilename(defaultextension=".docx",
+                                                    filetypes=[("Word Document", "*.docx")],
+                                                    initialdir=PWD,
+                                                    initialfile="TEST-Report.docx",
+                                                    title="검수용 리포트 저장")
+        
+        Report = ReportExporter(ReportFilePath)
+        Report.add_variable("Service ID", self.Entry_ServieID.get())
+        
+        ## Export Report
+        Report.save_document()
+        
+        # ## Variable list
+        # self.Entry_ServieID
+        # self.Entry_client
+        # self.Entry_ClientCompany
+        # self.Combobox_Platform
+        # self.Combobox_ServiceType
+        # self.Combobox_Labrary
+        # self.Combobox_Format
+        # self.Combobox_Insert
+        # self.Entry_SampleCount  
+        # # Sample Name list
+        # self.Entry_TargetNumber
+        # self.OptionMenu_Version
+        # self.CheckBox_Date1
+        # self.CheckBox_Date2
+        # self.CheckBox_Date3
+        # self.CheckBox_DateVar1.set(1)
+        # self.Entry_ReportDate.bind("<KeyRelease>", self.format_date)
+    
+    ###### 
     
     ## 실행 기능
     def run(self):
